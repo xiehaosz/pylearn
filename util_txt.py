@@ -28,26 +28,26 @@ def str_replace(str_file, old_str, new_str):
     with io.open(str_file, "r+", encoding="utf-8") as my_file:
         all_lines = my_file.readlines()
         my_file.seek(0, 0)
-        for line_elm in all_lines:
-            line_new = line_elm.replace(old_str, new_str)
+        for line_item in all_lines:
+            line_new = line_item.replace(old_str, new_str)
             my_file.write(line_new)
         my_file.close()
 
 
 def probe_fmt(str_dir):
-    _fs = fs.get_file_lst(str_dir, '.csv')
+    _my_fs = fs.get_file_lst(str_dir, '.csv')
     fs.set_path(str_dir)
-    for _elm in _fs:
-        str_replace(_elm, '| | | ', '')
+    for _item in _my_fs:
+        str_replace(_item, '| | | ', '')
 
 
 if __name__ == "__main__":
-    str_dir = r'D:\深研TDD多天线能力中心\04 版本档案\eRAN 15.1\20190223 eRAN15.1 G3板链路测试\GENEX Logfile\fmt'
-    my_fs = fs.get_file_lst(str_dir)
-    fs.set_path(str_dir)
+    _str_dir = r'D:\深研TDD多天线能力中心\04 版本档案\eRAN 15.1\20190223 eRAN15.1 G3板链路测试\GENEX Logfile\fmt'
+    my_fs = fs.get_file_lst(_str_dir)
+    fs.set_path(_str_dir)
 
-    for elm in my_fs:
-        str_replace(elm, '| | | ', '')
+    for item in my_fs:
+        str_replace(item, '| | | ', '')
 
     pass
 
