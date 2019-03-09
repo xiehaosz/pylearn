@@ -14,9 +14,9 @@ def get_file_lst(str_dir, str_ext):
     # _fs = os.listdir(str_dir) # 获取文件列表和文件夹列表
     _fs = []
     for root, dirs, files in os.walk(str_dir):
-        for elm in files:
-            if os.path.splitext(elm)[1] == str_ext:  # elm.endswith(str_ext)
-                _fs.append(elm)
+        for item in files:
+            if os.path.splitext(item)[1] == str_ext:  # item.endswith(str_ext)
+                _fs.append(item)
     return _fs
 
 
