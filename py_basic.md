@@ -1,5 +1,3 @@
-
-
 # 模块/函数
 
 [Python里三个好用的调试神器]: http://www.mamicode.com/info-detail-2808051.html
@@ -395,7 +393,7 @@
 
 # 正则表达式
 
-​	**引用模块 import re**
+	**引用模块 import re**
 
 - ^ 匹配字符串的开始。
 - $ 匹配字符串的结尾。
@@ -409,6 +407,24 @@
 - (a|b|c) 要么匹配 a，要么匹配 b，要么匹配 c。
 - (x) 一般情况下表示一个记忆组 (remembered group)。你可以利用 re.search 函数返回对象的 groups() 函数获取它的值。
 - 正则表达式中的点号通常意味着 “匹配任意单字符”
+
+**Python中re的match、search、findall、finditer区别**
+
+- re.match(pattern, string[, flags])
+
+  从首字母开始开始匹配，string如果包含pattern子串，则匹配成功，返回Match对象，失败则返回None，若要完全匹配，pattern要以$结尾
+
+- re.search(pattern, string[, flags])
+
+  若string中包含pattern子串，则返回Match对象，否则返回None，注意，如果string中存在多个pattern子串，只返回第一个
+
+- re.findall(pattern, string[, flags])
+
+  返回string中所有与pattern相匹配的全部字串，返回形式为数组
+
+- re.finditer(pattern, string[, flags])
+
+  返回string中所有与pattern相匹配的全部字串，返回形式为迭代器
 
 ```
 # 编译正则表达式，生成一个正则表达式（ Pattern ）对象，供 match() 和 search() 这两个函数使用
@@ -450,9 +466,9 @@ re.finditer # 返回迭代器
 
 # 多线程
 
-​	**引用模块 import threading as thrd**
+	**引用模块 import threading as thrd**
 
-- ​	https://www.runoob.com/python3/python3-multithreading.html
+- 	https://www.runoob.com/python3/python3-multithreading.html
 
 ```
 #!/usr/bin/python3
