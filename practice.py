@@ -127,11 +127,10 @@ def func_exp_format(str_exp):
         err = re.search(ptn, str_exp)
         # print(err)
         if err:
-            print('FORMAT ERROR')
-            return 0
+            return 'ERROR'
 
     if str_exp.count('(') != str_exp.count(')'):
-        return 0
+        return 'ERROR'
     else:
         return ''.join(str_exp.split())
 
@@ -160,13 +159,13 @@ def func_operate(num_a, num_b, operator):
         ans = num_a * num_b
     elif operator == '/':
         if num_a == 0:
-            ans = "VALUE ERROR"
+            ans = 'ERROR'
         else:
             ans = num_a / num_b
     return ans
 
 
-def func_calc(str_exp):
+def calc(str_exp):
     str_exp += '#'
     opra_set = "+-*/()#"
 
@@ -177,29 +176,41 @@ def func_calc(str_exp):
 
         elm = str_exp[idx]
 
-        if str_exp[idx] in opra_set:
-            top_opra = stack_opra.pop()
-            opra_prec = func_precede(top_opra, str_exp[idx])
-
-            if opra_prec == '>':
+        if elm in opra_set:
+            if elm == '(' and str_exp[idx+1] == '-':  # 表示负数的'-'号作为数字的部分，不是运算符
+                stack_opra.append(elm)
+                pos = idx+1
+                idx += 2
+                while not str_exp[idx] in opra_set:
+                    idx += 1
                 try:
-                    num_a = stack_num.pop()
-                    num_b = stack_num.pop()
+                    num = float(str_exp[pos:idx])
                 except:
-                    return "FORMAT ERROR"
-                ans = func_operate(num_b, num_a, top_opra)
-                if ans == "VALUE ERROR":
-                    return ans
-                else:
-                    stack_num.append(ans)
+                    return 'ERROR'
+                stack_num.append(num)
+            else:
+                top_opra = stack_opra.pop()
+                opra_prec = func_precede(top_opra, elm)
 
-            elif opra_prec == '<':
-                stack_opra.append(top_opra)
-                stack_opra.append(str_exp[idx])
-                idx += 1
+                if opra_prec == '>':
+                    try:
+                        num_a = stack_num.pop()
+                        num_b = stack_num.pop()
+                    except:
+                        return 'ERROR'
+                    ans = func_operate(num_b, num_a, top_opra)
+                    if ans == 'ERROR':
+                        return ans
+                    else:
+                        stack_num.append(ans)
 
-            elif opra_prec == '=':
-                idx += 1
+                elif opra_prec == '<':
+                    stack_opra.append(top_opra)
+                    stack_opra.append(elm)
+                    idx += 1
+
+                elif opra_prec == '=':
+                    idx += 1
         else:
             pos = idx
             while not str_exp[idx] in opra_set:
@@ -207,15 +218,23 @@ def func_calc(str_exp):
             try:
                 num = float(str_exp[pos:idx])
             except:
-                return 'INPUT ERROR'
+                return 'ERROR'
             stack_num.append(num)
 
     if len(stack_num) == 1 and stack_opra == []:
-        return stack_num.pop()
+        return round(stack_num.pop(), 2)
     else:
-        return "INPUT ERROR"
+        return 'ERROR'
 
 
 if __name__ == "__main__":
-    print(func_calc('10+((2+1)*2*((2+1)*2)/5'))
+
+    str_input = '0.5 *10 * (-2.0000) +((0.2+1)*2*(  ( -2 + 1)*2)/2)'
+    # print('Input exp: ' + str_input)
+
+    str_input = func_exp_format(str_input)
+    if str_input != 'ERROR':
+        print(calc(str_input))
+    else:
+        print(str_input)
 
