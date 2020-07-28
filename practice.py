@@ -278,7 +278,7 @@ def func_operate(num_a, num_b, operator):
             ans = 'ERROR'
         else:
             ans = num_a / num_b
-    return round(ans, 2)
+    return ans
 
 
 def func_num_unsigned_on_side(str_exp, idx):
@@ -310,14 +310,17 @@ def func_simple_exp(simple_exp):
                 num_0 = float(simple_exp[opra_rng[0]:idx])
                 num_1 = float(simple_exp[idx+1:opra_rng[1]])
                 result = str(func_operate(num_0, num_1, simple_exp[idx]))
-                simple_exp = simple_exp.replace(str_sub, result)
+                if result == 'ERROR':
+                    return result
+                else:
+                    simple_exp = simple_exp.replace(str_sub, result)
                 break
     simple_exp = simple_exp.replace('+-', '-').replace('--', '+')
     arr_nums = re.findall(r'\+?\-?\d+\.?\d*', simple_exp)
     val_sum = 0
     for elm in arr_nums:
         val_sum += float(elm)
-    return round(val_sum, 2)
+    return val_sum
 
 
 def calc(str_exp):
@@ -327,23 +330,27 @@ def calc(str_exp):
         bracket_ptn = r'\([^\(\)]+\)'
 
         while '(' in str_exp:
-            # print(str_exp)
             sub_exp = re.findall(bracket_ptn, str_exp)
             for elm in sub_exp:
                 simple_exp = elm[1:len(elm)-1]
                 result = str(func_simple_exp(simple_exp))
-                # print(simple_exp + '= ' + result)
+                if result == 'ERROR':
+                    return 'ERROR'
                 str_exp = str_exp.replace(elm, result)
-        # print(str_exp)
 
-        return round(float(func_simple_exp(str_exp)), 2)
+        result = str(func_simple_exp(str_exp))
+        if result == 'ERROR':
+            return 'ERROR'
+        else:
+            return round(float(result), 2)
     else:
         return 'ERROR'
 
 
 if __name__ == "__main__":
 
-    str_input = '2.34-4+((7.8*(8-13-2/14+7)*3/(4-8)/2))/2.1-6.333*2+0.0'
+    # str_input = '2.34-4+((7.8*(8-13-2/14+(-10)+7)*3/(4-8)/2))/2.1-6.333*2+0.0'
+    str_input = '(3.5-1)*((-0.5+1)+(-4.5)/6+(-5)*2)/10.0'
 
     value = calc(str_input)
     print(value)
