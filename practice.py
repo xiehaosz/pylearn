@@ -283,23 +283,20 @@ def func_operate(num_a, num_b, operator):
 
 def func_num_unsigned_on_side(str_exp, idx):
     exp_end = len(str_exp)-1
-    idx_0 = idx-1
-    while str_exp[idx_0] in '0123456789.':
+    idx_0 = idx
+    while str_exp[idx_0-1] in '0123456789.':
+        idx_0 -= 1
         if idx_0 == 0:
             break
-        else:
-            idx_0 -= 1
 
-    idx_1 = idx+1
-    if str_exp[idx_1] == '-':
+    idx_1 = idx
+    if str_exp[idx_1+1] == '-':
         idx_1 += 1
-    while str_exp[idx_1] in '0123456789.':
+    while str_exp[idx_1+1] in '0123456789.':
+        idx_1 += 1
         if idx_1 == exp_end:
             break
-        else:
-            idx_1 += 1
-    if idx_1 == exp_end:
-        idx_1 += 1
+    idx_1 += 1  # 切片序号
     return idx_0, idx_1
 
 
