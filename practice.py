@@ -157,7 +157,7 @@ def func_operate(num_a, num_b, operator):
     elif operator == '*':
         ans = num_a * num_b
     elif operator == '/':
-        if num_a == 0:
+        if num_b == 0:
             ans = 'ERROR'
         else:
             ans = num_a / num_b
@@ -274,7 +274,7 @@ def func_operate(num_a, num_b, operator):
     elif operator == '*':
         ans = num_a * num_b
     elif operator == '/':
-        if num_a == 0:
+        if num_b == 0:
             ans = 'ERROR'
         else:
             ans = num_a / num_b
