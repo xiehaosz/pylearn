@@ -94,59 +94,30 @@ def calc(str_in):
 1、操作符"+-*/()"前后有空格认为是合法的，数字中间有空格认为非法(例如"1 1+1"或"1. 1+1"非法，但是" 1+ 1"合法)
 2、数字不能以0开头，表达式中间的负数和正数必须用括号括起来，否则认为非法(例如"1+-1"非法，"1+(-1)"合法)
 3、算术表达式合法时，value为float类型的值；否则，value为"ERROR"
-
-算法思路1：
-表达式求值其实是《数据结构》课程里一个基本且重要的问题之一，一般作为 “栈” 的应用来提出。
-问题的关键就是需要按照人们通常理解的运算符的优先级来进行计算，而在计算过程中的临时结果则用 栈 来存储。
-为此，我们可以首先构造一个 “表” 来存储当不同的运算符 “相遇” 时，它们谁更 “屌” 一些（优先级更高一些）。这样就可以告诉计算机，面对不同的情形，它接下来应该如何来处理。
-其次，我们需要构造两个栈，一个运算符栈，一个运算数栈。
-运算符栈是为了搞定当某个运算符优先级较低时，暂时先让它呆在栈的底部位置，待它可以 “重见天日” 的那一天（优先级相对较高时），再把它拿出来使用。正确计算完成后，此栈应为空。
-运算数栈则是为了按合理的计算顺序存储运算中间结果。正确计算完成后，此栈应只剩下一个数，即为最后的结果。
-
-其中需要稍微注意的细节有：
-1. 表达式处理前，前后都插入一个 '#' 作为一个特殊的运算符，这样做是为了方便统一处理，即不用再去特别判断表达式是否已经结束（从而引发一系列边界问题导致代码冗长复杂，这种处理也可称之为 “哨兵” 技巧）。
-如果最后两个运算符相遇则说明表达式处理完毕，这个运算符的优先级也是最低的（在 prior 表中也有体现）。
-2. 高精度使用decimal模块，配合getcontext().prec = 10设置精度
-https://www.cnblogs.com/maples7/p/5212744.html
 '''
 
 # import re
 
+# 公共部分，输入有效判断和运算
 def func_exp_format(str_exp):
     lst_ptn = list()
-    lst_ptn.append(r'[^\+\-\*\/\.\(\)\d\s]')  # 无效字符
-    lst_ptn.append(r'[\+\-\*\/\.]\s*[\+\-\*\/\.\)]')  # 表达式规则：连续符号
-    lst_ptn.append(r'\(\s*[\+\*\/\.\)]')  # 表达式规则：左括号
-    lst_ptn.append(r'\)\s*[\(\.\d]')  # 表达式规则：右括号
-    lst_ptn.append(r'\.[\s\(]|\s\.|\.\d+\.')  # 表达式规则：点号
-    lst_ptn.append(r'^[\)\*\/\.]|[\+\-\*\/\.\(]$')  # 表达式规则：起始/结束
-    lst_ptn.append(r'\d\s+\d|[^\.\d]0\d')  # 无效数字
+    lst_ptn.append(r'[^\+\-\*\/\.\(\)\d\s]')            # 无效字符
+    lst_ptn.append(r'[\+\-\*\/\.]\s*[\+\-\*\/\.\)]')    # 表达式规则：连续符号
+    lst_ptn.append(r'\(\s*[\+\*\/\.\)]')                # 表达式规则：左括号
+    lst_ptn.append(r'\)\s*[\(\.\d]')                    # 表达式规则：右括号
+    lst_ptn.append(r'\.[\s\(]|\s\.|\.\d+\.')            # 表达式规则：点号
+    lst_ptn.append(r'^[\)\*\/\.]|[\+\-\*\/\.\(]$')      # 表达式规则：起始/结束
+    lst_ptn.append(r'\d\s+\d|[^\.\d]0\d')               # 无效数字
 
     for ptn in lst_ptn:
         err = re.search(ptn, str_exp)
         # print(err)
         if err:
             return 0
-
     if str_exp.count('(') != str_exp.count(')'):
         return 0
     else:
         return ''.join(str_exp.split())
-
-
-def func_precede(opra_a, opra_b):
-    opra_prior = (
-        # '+'   '-'   '*' '/'  '('  ')'   '#'
-        ('>', '>', '<', '<', '<', '>', '>'),  # '+'
-        ('>', '>', '<', '<', '<', '>', '>'),  # '-'
-        ('>', '>', '>', '>', '<', '>', '>'),  # '*'
-        ('>', '>', '>', '>', '<', '>', '>'),  # '/'
-        ('<', '<', '<', '<', '<', '=', ' '),  # '('
-        ('>', '>', '>', '>', ' ', '>', '>'),  # ')'
-        ('<', '<', '<', '<', '<', ' ', '=')  # '#'
-    )
-    opra_idx = {'+': 0, '-': 1, '*': 2, '/': 3, '(': 4, ')': 5, '#': 6}
-    return opra_prior[opra_idx[opra_a]][opra_idx[opra_b]]
 
 
 def func_operate(num_a, num_b, operator):
@@ -163,8 +134,38 @@ def func_operate(num_a, num_b, operator):
             ans = num_a / num_b
     return ans
 
+'''
+算法思路1：
+表达式求值其实是《数据结构》课程里一个基本且重要的问题之一，一般作为 “栈” 的应用来提出。
+问题的关键就是需要按照人们通常理解的运算符的优先级来进行计算，而在计算过程中的临时结果则用 栈 来存储。
+为此，我们可以首先构造一个 “表” 来存储当不同的运算符 “相遇” 时，它们谁更 “屌” 一些（优先级更高一些）。这样就可以告诉计算机，面对不同的情形，它接下来应该如何来处理。
+其次，我们需要构造两个栈，一个运算符栈，一个运算数栈。
+运算符栈是为了搞定当某个运算符优先级较低时，暂时先让它呆在栈的底部位置，待它可以 “重见天日” 的那一天（优先级相对较高时），再把它拿出来使用。正确计算完成后，此栈应为空。
+运算数栈则是为了按合理的计算顺序存储运算中间结果。正确计算完成后，此栈应只剩下一个数，即为最后的结果。
 
-def calc(str_exp):
+其中需要稍微注意的细节有：
+1. 表达式处理前，前后都插入一个 '#' 作为一个特殊的运算符，这样做是为了方便统一处理，即不用再去特别判断表达式是否已经结束（从而引发一系列边界问题导致代码冗长复杂，这种处理也可称之为 “哨兵” 技巧）。
+如果最后两个运算符相遇则说明表达式处理完毕，这个运算符的优先级也是最低的（在 prior 表中也有体现）。
+2. 高精度使用decimal模块，配合getcontext().prec = 10设置精度
+https://www.cnblogs.com/maples7/p/5212744.html
+'''
+
+def func_precede(opra_a, opra_b):
+    opra_prior = (
+        # '+'   '-'   '*' '/'  '('  ')'   '#'
+        ('>', '>', '<', '<', '<', '>', '>'),  # '+'
+        ('>', '>', '<', '<', '<', '>', '>'),  # '-'
+        ('>', '>', '>', '>', '<', '>', '>'),  # '*'
+        ('>', '>', '>', '>', '<', '>', '>'),  # '/'
+        ('<', '<', '<', '<', '<', '=', ' '),  # '('
+        ('>', '>', '>', '>', ' ', '>', '>'),  # ')'
+        ('<', '<', '<', '<', '<', ' ', '=')  # '#'
+    )
+    opra_idx = {'+': 0, '-': 1, '*': 2, '/': 3, '(': 4, ')': 5, '#': 6}
+    return opra_prior[opra_idx[opra_a]][opra_idx[opra_b]]
+
+
+def calc_A(str_exp):
 
     str_exp = func_exp_format(str_exp)
     if str_exp:
@@ -231,91 +232,47 @@ def calc(str_exp):
         return 'ERROR'
 
 
-if __name__ == "__main__":
-
-    str_input = '2.34-4+((7.8*(-13-2/14)*3/(4-8)/2))/2.1-6.333*2+0.0'
-
-    value = calc(str_input)
-    print(value)
-
-
 '''
 算法思路2：
 从最内层括号开始（括号内不含括号），从左向右计算先乘除后加减，使用计算值替换括号内容
 逐层括号递归
 '''
-def func_exp_format(str_exp):
-    lst_ptn = list()
-    lst_ptn.append(r'[^\+\-\*\/\.\(\)\d\s]')            # 无效字符
-    lst_ptn.append(r'[\+\-\*\/\.]\s*[\+\-\*\/\.\)]')    # 表达式规则：连续符号
-    lst_ptn.append(r'\(\s*[\+\*\/\.\)]')                # 表达式规则：左括号
-    lst_ptn.append(r'\)\s*[\(\.\d]')                    # 表达式规则：右括号
-    lst_ptn.append(r'\.[\s\(]|\s\.|\.\d+\.')            # 表达式规则：点号
-    lst_ptn.append(r'^[\)\*\/\.]|[\+\-\*\/\.\(]$')      # 表达式规则：起始/结束
-    lst_ptn.append(r'\d\s+\d|[^\.\d]0\d')               # 无效数字
-
-    for ptn in lst_ptn:
-        err = re.search(ptn, str_exp)
-        # print(err)
-        if err:
-            return 0
-
-    if str_exp.count('(') != str_exp.count(')'):
-        return 0
-    else:
-        return ''.join(str_exp.split())
-
-
-def func_operate(num_a, num_b, operator):
-    if operator == '+':
-        ans = num_a + num_b
-    elif operator == '-':
-        ans = num_a - num_b
-    elif operator == '*':
-        ans = num_a * num_b
-    elif operator == '/':
-        if num_b == 0:
-            ans = 'ERROR'
-        else:
-            ans = num_a / num_b
-    return ans
-
-
-def func_num_unsigned_on_side(str_exp, idx):
+def func_get_side_num(str_exp, idx):
     exp_end = len(str_exp)-1
-    idx_0 = idx
-    while str_exp[idx_0-1] in '0123456789.':
-        idx_0 -= 1
-        if idx_0 == 0:
+    pos_0 = idx
+    while str_exp[pos_0-1] in '0123456789.':
+        pos_0 -= 1
+        if pos_0 == 0:
             break
-
-    idx_1 = idx
-    if str_exp[idx_1+1] == '-':
-        idx_1 += 1
-    while str_exp[idx_1+1] in '0123456789.':
-        idx_1 += 1
-        if idx_1 == exp_end:
+    pos_1 = idx
+    if str_exp[pos_1+1] == '-':
+        pos_1 += 1
+    while str_exp[pos_1+1] in '0123456789.':
+        pos_1 += 1
+        if pos_1 == exp_end:
             break
-    idx_1 += 1  # 切片序号
-    return idx_0, idx_1
+    pos_1 += 1  # 切片序号
+    return pos_0, pos_1
 
 
 def func_simple_exp(simple_exp):
     while '*' in simple_exp or '/' in simple_exp:
         for idx in range(1, len(simple_exp)-1):
             if simple_exp[idx] in '*/':
-                opra_rng = func_num_unsigned_on_side(simple_exp, idx)
+                opra_rng = func_get_side_num(simple_exp, idx)
 
                 str_sub = simple_exp[opra_rng[0]:opra_rng[1]]
-                num_0 = float(simple_exp[opra_rng[0]:idx])
-                num_1 = float(simple_exp[idx+1:opra_rng[1]])
+                try:
+                    num_0 = float(simple_exp[opra_rng[0]:idx])
+                    num_1 = float(simple_exp[idx+1:opra_rng[1]])
+                except:
+                    return 'ERROR'
                 result = str(func_operate(num_0, num_1, simple_exp[idx]))
+
                 if result == 'ERROR':
-                    return result
-                else:
-                    simple_exp = simple_exp.replace(str_sub, result)
+                    return 'ERROR'
+                simple_exp = simple_exp.replace(str_sub, result).replace('+-', '-').replace('--', '+')
                 break
-    simple_exp = simple_exp.replace('+-', '-').replace('--', '+')
     arr_nums = re.findall(r'\+?\-?\d+\.?\d*', simple_exp)
     val_sum = 0
     for elm in arr_nums:
@@ -323,12 +280,10 @@ def func_simple_exp(simple_exp):
     return val_sum
 
 
-def calc(str_exp):
-
+def calc_B(str_exp):
     str_exp = func_exp_format(str_exp)
     if str_exp:
         bracket_ptn = r'\([^\(\)]+\)'
-
         while '(' in str_exp:
             sub_exp = re.findall(bracket_ptn, str_exp)
             for elm in sub_exp:
@@ -337,20 +292,19 @@ def calc(str_exp):
                 if result == 'ERROR':
                     return 'ERROR'
                 str_exp = str_exp.replace(elm, result)
-
         result = str(func_simple_exp(str_exp))
         if result == 'ERROR':
             return 'ERROR'
-        else:
-            return round(float(result), 2)
+        return round(float(result), 2)
     else:
         return 'ERROR'
 
 
 if __name__ == "__main__":
+    str_input = '2.34-4+((7.8*(8-13-2/14+(-107)+7)*3/(4-8)/2))/2.1-6.333*2/(4-2)'
+    # str_input = '(3.5- 1)/0 * ((- 0.5 +1)  +(- 4.5)  +(2.5) / 6+(-5)* 2 - 3)/    2/0.1'
 
-    # str_input = '2.34-4+((7.8*(8-13-2/14+(-10)+7)*3/(4-8)/2))/2.1-6.333*2+0.0'
-    str_input = '(3.5-1)*((-0.5+1)+(-4.5)/6+(-5)*2)/10.0'
-
-    value = calc(str_input)
+    value = calc_A(str_input)
+    print(value)
+    value = calc_B(str_input)
     print(value)
