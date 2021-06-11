@@ -1,0 +1,81 @@
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import pyplot as plt
+import numpy as np
+
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Create the mesh in polar coordinates and compute corresponding Z.
+r = np.linspace(0, 1.25, 50)
+p = np.linspace(0, 2*np.pi, 50)
+R, P = np.meshgrid(r, p)
+Z = ((R**2 - 1)**2)
+
+# Express the mesh in the cartesian system.
+X, Y = R*np.cos(P), R*np.sin(P)
+
+# Plot the surface.
+ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
+
+# Tweak the limits and add latex math labels.
+ax.set_zlim(0, 1)
+ax.set_xlabel(r'$\phi_\mathrm{real}$')
+ax.set_ylabel(r'$\phi_\mathrm{im}$')
+ax.set_zlabel(r'$V(\phi)$')
+
+plt.show()
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def beamforming(arr_a, arr_p):
+
+    C = 299792.458
+    PI = np.pi
+
+    freq = 2600  # MHz
+    d_ant = 57  # mm
+
+    if len(arr_a) == len(arr_p):
+
+        theta_grid = 360
+        arr_theta = np.arange(-PI, PI, 2 * PI/theta_grid)
+
+        # 单元阵子（天线增益）
+        arr_elm = -np.minimum(12 * ((arr_theta/(90 / 180 * PI)) ** 2), 30) + 12
+
+        arr_re = np.zeros(theta_grid)
+        arr_im = np.zeros(theta_grid)
+        arr_idx = np.arange(0, len(arr_a))
+        d = 0.5  # d_ant/C*freq
+
+        for iii in range(theta_grid):
+            delta_p = d * np.sin(arr_theta[iii]) * PI * 2
+            arr_re[iii] = sum(arr_a * np.cos(arr_p / 180 * PI + arr_idx * delta_p))
+            arr_im[iii] = sum(arr_a * np.sin(arr_p / 180 * PI + arr_idx * delta_p))
+
+        arr_c = np.vectorize(complex)(arr_re, arr_im)
+        arr_pwr = np.maximum(10 * np.log10(np.abs(arr_c) ** 2) + arr_elm, np.zeros(arr_c.shape))
+
+        # # 单元阵子
+        # ax = plt.subplot(111, polar=True)  # 极坐标
+        # ax.set_thetagrids(np.arange(0.0, 360.0, 10.0))  # 设置角度网格线
+        # plt.plot(arr_theta, arr_elm)
+        # plt.show()
+        return arr_theta, arr_pwr
+
+
+if __name__ == "__main__":
+
+    arr_a = np.array([1, 1, 1, 1, 1, 1, 1, 1])
+    arr_p = np.array([0, 45, 90, 135, 180, 225, 270, 315])
+    arr_theta, arr_pwr = beamforming(arr_a, arr_p)
+
+    ax = plt.subplot(111, polar=True)  # 极坐标
+    ax.set_thetagrids(np.arange(0.0, 360.0, 10.0))  # 设置角度网格线
+    plt.plot(arr_theta, arr_pwr)
+    plt.show()
