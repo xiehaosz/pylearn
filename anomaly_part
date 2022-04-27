@@ -1,0 +1,339 @@
+class MultiCurve:
+    def __init__(self, y_list, x_list=None, y_name=None, x_name=None, data_name_list=None, pre_check=False, path=None):
+        # type: (list, list, str, str, List[str], bool, str) -> None
+        """
+        :param y_list: 多组y值的列表
+        :param x_list: 多组x值的列表, 必须与y值字典的数量一致, 与y值一一对应
+        :param data_name_list: 多组数据值的名称, 与y_list一一对应
+        :param pre_check:  是否对数据进行异常检测
+        :param path:  图表输出的保存路径, 如果不提供路径则不保存
+        """
+        self.path = path if path is None else path if path[-1] == '/' else path + '/'
+        self.size = len(y_list)
+
+        self.x_name = x_name
+        self.y_name = y_name
+
+        if data_name_list is not None:  # 防呆
+            while len(data_name_list) < self.size:
+                data_name_list.append(str(len(data_name_list)))
+
+        if x_list is None:
+            self.dimension = 1
+            if data_name_list is None:
+                # 未传入数据名称使用序号命名
+                self.curves = [CurveBase(y_list[i], y_name=y_name, data_name=str(i),
+                                         pre_check=pre_check, path=path) for i in range(self.size)]
+            else:
+                self.curves = [CurveBase(y_list[i], y_name=y_name, data_name=data_name_list[i],
+                                         pre_check=pre_check, path=path) for i in range(self.size)]
+        else:
+            if len(x_list) == self.size:
+                self.dimension = 2
+                if data_name_list is None:
+                    self.curves = [CurveBase(y_list[i], x_list[i],
+                                             y_name=y_name, x_name=x_name, data_name=str(i),
+                                             pre_check=pre_check, path=path) for i in range(self.size)]
+                else:
+                    self.curves = [CurveBase(y_list[i], x_list[i],
+                                             y_name=y_name, x_name=x_name, data_name=data_name_list[i],
+                                             pre_check=pre_check, path=path) for i in range(self.size)]
+            else:
+                print('x值系列与y值系列数量不一致, 创建MultiCurve对比组失败.')
+
+    """ 连续数据的对比方法: 一维数据滑动平均后对比, 二维数据使用多项式拟合对比, 如果需要其他对齐方法由子类重写 """
+    def compare_all_curve(self, show=2, show_all=False):
+        """
+        所有曲线两两组合对比
+        :param show: {0:不作图 1:作图趋势线, 2:叠加原始数据}
+        :param show_all: 所有图形绘画在一张图表中, 图表可能会比较乱
+        :return:
+        """
+        compare_res = {}
+        compare_fig = {}
+
+        if show_all:
+            if self.dimension == 1:
+                compare_res.update(self._compare_curve_1d_mov(self.curves, show=show))
+                set_fig_style(title='Performance Comparing', legend=True, y_label=self.y_name, ax_color='#F8F8F8')
+                compare_fig['all'] = plt.gcf()
+            else:
+                compare_res.update(self._compare_curve_2d_poly(self.curves, show=show))
+                set_fig_style(title='Performance Comparing', legend=True,
+                              x_label=self.y_name, y_label=self.y_name)
+                compare_fig['all'] = plt.gcf()
+        else:
+            for i in range(self.size-1):
+                for j in range(i+1, self.size):
+                    cv_0, cv_1 = self.curves[i], self.curves[j]
+                    compare_fig[(cv_0.name, cv_1.name)] = plt.figure()
+
+                    if self.dimension == 1:
+                        compare_res.update(self._compare_curve_1d_mov([cv_0, cv_1], show=show))
+                        set_fig_style(title='Performance Comparing', legend=True,
+                                      y_label=self.y_name)
+                    else:
+                        compare_res.update(self._compare_curve_2d_poly([cv_0, cv_1], show=show))
+                        set_fig_style(title='Performance Comparing', legend=True,
+                                      x_label=self.y_name, y_label=self.y_name)
+
+        if self.path:
+            pdf_name, i = os.path.join(self.path, 'Multi_Data_Performance.pdf'), 0
+            while os.path.exists(pdf_name):
+                i += 1
+                pdf_name = os.path.join(self.path, 'Multi_Data_(%s)_Performance.pdf' % i)
+            with PdfPages(pdf_name) as pdf:
+                for name, fig in compare_fig.items():
+                    pdf.savefig(fig)
+        return compare_res
+
+    """ 一维数据对齐: 默认截短, 如果需要其他对齐方法由子类重写 """
+    def _align_curves_1d(self, curves: List[CurveBase] = None):
+        """
+        一维数据对齐
+        :param curves: CurveBase的列表
+        :return: 截短后的数据列表和数据长度
+        """
+        curves = self.curves if curves is None else curves
+        if len(curves) < 2:
+            return curves
+        length_min = 10 ** 5
+        for curve in curves:
+            length_min = curve.length if curve.length < length_min else length_min
+        return [cv.truncate(0, length_min) for cv in curves], length_min
+
+    """ 二维数据对齐: x值区间拉齐, 如果需要其他对齐方法由子类重写 """
+    def _align_curves_2d(self, curves: List[CurveBase] = None, truncate: bool = False):
+        """
+        数据对齐, 一维数据默认截短, 二维数据x值区间拉齐, 其他对齐方法或比较标准由子类重写
+        一维数据和二维数据并存时，统一按一维数据处理（取y值数据）
+        :param curves: CurveBase的列表
+        :return: x区间拉齐后的数据列表和x区间
+        """
+        curves = self.curves if curves is None else curves
+        if len(curves) < 2:
+            return curves
+        x_min, x_max = -10 ** 5, 10 ** 5
+        for curve in curves:
+            # 获取重叠的x区间
+            x_min = curve.x_min if curve.x_min > x_min else x_min
+            x_max = curve.x_max if curve.x_max < x_max else x_max
+        if x_min >= x_max:
+            print('数据组x值域无交叠区间, 无法进行对比.')
+            return []
+        return [cv.truncate_x(x_min, x_max) for cv in curves], x_min, x_max
+
+    def _compare_curve_1d_mov(self, curves, thd=0.7, n=20, dim=1, show=2):
+        # type: (List[CurveBase], float, int, int, int) -> any
+        """
+        一维曲线使用滑窗平均拟合对比
+        :param curves: CurveBase列表
+        :param thd: curve_0 > curve_1 或 curve_0 < curve_1的成员占比通过门限
+        :param n: 滑动平均指定窗口大小
+        :param dim: 该参数仅对二维数据生效, {0:将x系列当做一维数据处理, 1:将y系列当做一维数据处理}
+        :param show: {0:不作图 1:作图趋势线, 2:叠加原始数据}
+        :return
+        """
+        # 对齐数据
+        curves, length = self._align_curves_1d(curves)
+
+        curves_mov = [np.array(cv.fit_moving_avg(n, dim=dim)) for cv in curves]
+        if show > 0:
+            if show > 1:
+                for cv in curves:
+                    plt.scatter(range(length), cv.y if dim == 1 else cv.x, alpha=0.3, label=cv.name)
+            for i in range(len(curves)):
+                plt.plot(range(length), curves_mov[i], zorder=2, label=curves[i].name)
+            plt.legend()
+        res = {}
+        for i in range(len(curves)-1):
+            for j in range(i+1, len(curves)):
+                side_proportion = (curves_mov[i] > curves_mov[j]).sum() / length
+                # 在曲线同一侧的样本占比超过门限, 曲线对比通过
+                res[(curves[i].name, curves[j].name)] = (side_proportion > thd) or (side_proportion < (1-thd))
+        return res
+
+    def _compare_curve_2d_poly(self, curves, thd=0.7, deg=5, show=2):
+        # type: (List[CurveBase], float, int, int) -> any
+        """
+        两组二维曲线使用多项式拟合对比
+        :param curves: CurveBase列表
+        :param thd: curve_0 > curve_1 或 curve_0 < curve_1的成员占比通过门限
+        :param deg: 多项式拟合指定拟合阶数
+        :param show: {0:不作图 1:作图趋势线, 2:叠加原始数据}
+        :return
+        """
+        # 对齐数据x区间
+        curves, x_min, x_max = self._align_curves_2d(curves)
+
+        # 二维数据使用多项式拟合对比:
+        length = 300                            # 拉齐的打点数
+        x_dump = (x_max - x_min) * 0.05         # 趋势线两侧偏离过大, 各截去5%
+        x_min += x_dump
+        x_max -= x_dump
+        x_val = np.linspace(x_min, x_max, length)
+
+        curve_poly = [np.array(cv.fit_poly1d(deg, equation=True)(x_val)) for cv in curves]
+        # curve_std = [cv.fit_ranging_avg(n=3, return_std=True) for cv in curves]  # 区间标准差
+        if show > 0:
+            if show > 1:
+                for cv in curves:
+                    plt.scatter(cv.x, cv.y, alpha=0.3, label=cv.name)
+            for i in range(len(curves)):
+                plt.plot(x_val, curve_poly[i], zorder=2, label=curves[i].name)
+            plt.legend()
+        res = {}
+        for i in range(len(curves)-1):
+            for j in range(i+1, len(curves)):
+                side_proportion = (curve_poly[i] > curve_poly[j]).sum() / length
+                # 在曲线同一侧的样本占比超过门限, 曲线对比通过
+                res[(curves[i].name, curves[j].name)] = (side_proportion > thd) or (side_proportion < (1-thd))
+        return res
+
+
+def set_fig_style(title=None, legend=False, grid=False, x_label=None, y_label=None, x_scale=0, y_scale=0,
+                  x_lim=None, y_lim=None, x_ticks=None, y_ticks=None, fig_color=None, ax_color=None):
+    """
+    :param title: 图表标题
+    :param legend: 是否显示图例
+    :param grid: 显示网格线 [True, 'major', 'minor']
+    :param x_label: X轴标题, 类型str
+    :param y_label: Y轴标题, 类型str
+    :param x_scale: 传入数值时用于主要刻度, 传入列表时[主要刻度,次要刻度],传入空列表[]隐藏轴刻度
+    :param y_scale: 传入数值时用于主要刻度, 传入列表时[主要刻度,次要刻度],传入空列表[]隐藏轴刻度
+    :param x_lim:   X轴值范围, 类型:tuple(min, max)
+    :param y_lim:   Y轴值范围, 类型:tuple(min, max)
+    :param x_ticks: 将坐标轴刻度值替换为指定标签,格式:[[X值序列], [序列值对应的标签]]
+    :param y_ticks: 将坐标轴刻度值替换为指定标签,格式:[[Y值序列], [序列值对应的标签]]
+    :param fig_color: 设置画板背景色
+    :param ax_color: 设置画布背景色
+    :return: None
+    """
+    fig = plt.gcf()
+    ax = plt.gca()
+    if title is not None:
+        plt.title(title, fontsize=12, fontweight='bold', color='blue')
+    if legend:
+        plt.legend(fontsize=8)
+        # plt.legend(loc=0, prop={'size': 10, 'weight': 'bold', 'family': 'Times New Roman'})
+        # plt.legend(loc='best', fontsize=12, frameon=False, ncol=1)
+    if grid:
+        # ['major','minor','both'] ['y','y','both']
+        plt.grid(which='major', axis='both', linestyle='-.', linewidth=0.5)
+        plt.grid(which='minor', axis='both', linestyle='-.', linewidth=0.6, color='0.8')
+    if fig_color is not None:
+        fig.set_facecolor(fig_color)
+    if ax_color is not None:
+        ax.set_facecolor(ax_color)
+    if x_label is not None:
+        # plt.xlabel(x_label)
+        plt.xlabel(x_label, fontsize=8, color='blue')
+    if y_label is not None:
+        plt.ylabel(y_label, fontsize=10, color='blue')
+    # 设置主/次坐标轴刻度(设置后才有主/次网格线), 与plt.MultipleLocator的格式相同
+    if x_scale > 0:
+        if isinstance(x_scale, list):
+            if x_scale:
+                ax.xaxis.set_major_locator(MultipleLocator(x_scale[0]))
+                ax.xaxis.set_minor_locator(MultipleLocator(x_scale[1]))
+            else:
+                ax.xaxis.set_major_locator(plt.NullLocator())
+                ax.xaxis.set_major_formatter(plt.NullFormatter())
+        else:
+            ax.xaxis.set_major_locator(MultipleLocator(x_scale))
+    if y_scale > 0:
+        if isinstance(y_scale, list):
+            if y_scale:
+                ax.yaxis.set_major_locator(MultipleLocator(y_scale[0]))
+                ax.yaxis.set_minor_locator(MultipleLocator(y_scale[1]))
+            else:
+                ax.yaxis.set_major_locator(plt.NullLocator())
+                ax.yaxis.set_major_formatter(plt.NullFormatter())
+        else:
+            ax.yaxis.set_major_locator(MultipleLocator(y_scale))
+    if x_lim is not None:
+        plt.xlim(x_lim)  # 元组(min, max)
+    if y_lim is not None:
+        plt.ylim(y_lim)  # 元组(min, max)
+
+    # 设置轴标签, 第一个数组参数是x值，第二个数组参数是值对应的文本显示(可选)
+    if x_ticks is not None:
+        plt.xticks(*x_ticks)
+    if y_ticks is not None:
+        plt.yticks(*y_ticks)
+
+
+if __name__ == '__main__':
+
+    with open(r'D:/temp/sample.csv') as csv_file:
+        keys = ['smark', 'sinr', 'static', 'thrp', 'static_err', 'static_drop',
+                'static_dent', 'thrp_err', 'thrp_e', 'thrp_turn', 'static_cycle', 'static_jump']
+        df = pd.read_csv(csv_file, usecols=keys, encoding='gbk', header=0)
+        csv_file.close()
+        df.dropna(axis=0, inplace=True)
+
+        # # 定点数据: 离群值
+        # my_curve_1 = CurveBase(df['static_err'], y_name='static_err', pre_check=True, path='D:/')
+        # plt.show()
+
+        # # 定点数据: 聚类
+        # my_curve_2 = CurveBase(df['static_jump'], pre_check=True)
+        # plt.show()
+
+        # # 周期识别
+        # my_curve_3 = CurveBase(df['static_drop'], pre_check=True)   # 周期数据
+        # plt.show()
+        # my_curve_4 = CurveBase(df['sinr'], pre_check=True)          # 非周期数据
+        # plt.show()
+
+        # # 移动数据拟合异常识别(2D)
+        # my_curve_5 = CurveBase(df['thrp_turn'], df['sinr'], pre_check=True)  # 正常
+        # plt.show()
+        # my_curve_6 = CurveBase(df['thrp_err'], df['sinr'], pre_check=True)   # 异常
+        # plt.show()
+        # my_curve_7 = CurveBase(df['thrp_e'], df['sinr'], pre_check=True)     # 无特征
+        # plt.show()
+        #
+        # # 滑动平均1d+掉坑识别
+        # my_curve_8 = CurveBase(df['thrp_turn'], pre_check=True)
+        # plt.show()
+
+        # # 滑动平均1d+连续下降识别
+        # my_curve = CurveBase(CurveBase(df['thrp_turn']).fit_moving_avg(10, show=0))
+        # my_curve.anomaly_slumps(depth=5000, show=2)
+        # plt.show()
+        #
+        # # 拟合方法
+        # CurveBase(df['thrp_turn'], df['sinr']).fit_moving_avg(n=5, show=2)
+        # plt.show()
+        # CurveBase(df['thrp_turn'], df['sinr']).fit_ranging_avg(n=2, show=2)
+        # plt.show()
+        # CurveBase(df['thrp_turn']).fit_ranging_avg(n=20, show=2)
+        # plt.show()
+
+        # # 异常修正
+        # CurveBase(df['thrp_err'], df['sinr']).rectify_outlier_smoothed_z_score(show=3)
+        # plt.show()
+        # CurveBase(df['static_drop']).rectify_outlier_smoothed_z_score(show=2)
+        # plt.show()
+
+        # # 滑动平均2d+掉坑识别
+        # my_curve = CurveBase(*CurveBase(df['thrp_turn'], df['sinr']).fit_moving_avg(2, show=2))
+        # my_curve.anomaly_pits(depth=3000, wider=False, reverse=False, show=2)
+        # plt.show()
+
+        # my_curve = CurveBase(df['thrp_turn'])
+        # plt.show()
+
+        muti_curves = MultiCurve([df['thrp_turn'], df['thrp_err'], df['thrp_e']], [df['sinr'], df['sinr'], df['sinr']],
+                                 'this_is_y', 'this_is_x', ['AAA', 'BBB', 'CCC'], path='D:/')
+
+        # print(muti_curves.compare_all_curve(show_all=True))
+        print(muti_curves.compare_all_curve())
+        # plt.show()
+
+        # # 时间序列中单位根平稳性检验adfuller
+        # from statsmodels.tsa.stattools import adfuller
+        # plt.plot(df['thrp_turn'])
+        # adf, pvalue, usedlag, nobs, critical_values, icbest = adfuller(df['thrp_turn'])
+        # print(adf, pvalue, usedlag, nobs, critical_values, icbest)
