@@ -23,7 +23,7 @@ if __name__ == '__main__':
                                      (links[i+j].strip('\n'), cur_name, j), shell=True)
             else:
                 p = subprocess.Popen('D:\\ffmpeg\\bin\\ffmpeg -i %s -c copy -bsf:a aac_adtstoasc %s.mp4' %
-                                     (links[i+1].strip('\n'), cur_name), shell=True)
+                                     (links[i].strip('\n'), cur_name), shell=True)
             return_code = p.wait()
             print(cur_name + '_%02d' % j)
             j += 1
