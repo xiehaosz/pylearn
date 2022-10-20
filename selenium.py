@@ -367,3 +367,77 @@ if __name__ == '__main__':
     # web_df.to_excel(writer, sheet_name='sheet0', header=False, index=False, startrow=2, startcol=2)
     # writer.save()
     # writer.close()
+    
+"""website==========================================================================="""
+    driver.set_page_load_timeout(5)                                     # 设定页面加载限制时间
+
+    # try:
+    #     driver.get('http://w3.huawei.com/next/indexa.html')
+    #     time.sleep(1)
+    #     # 在Python中隐藏和加密密码: http://www.codebaoku.com/it-python/it-python-238119.html
+    #     driver.find_element_by_xpath("//input[@class='user']").send_keys('x00336957')
+    #     driver.find_element_by_xpath("//input[@class='psw']").send_keys('Bwatest)0461wtl')
+    #     driver.find_element_by_xpath("//input[@class='btn']").click()
+    # except Exception:
+    #     driver.execute_script('window.stop()')
+    #     driver.quit()
+
+    home = driver.current_window_handle
+    home_path = r'D:\downloads'
+
+    res = []
+    driver.get('http://www.baidu.com')
+    time.sleep(10)
+
+    menus = driver.find_elements_by_xpath("//div[@class='scrollable-menu']/ul/li")
+    if not menus:
+        driver.quit()
+        raise RuntimeError
+
+    header = validate_name(driver.title.split('|')[0].replace(' ', '').replace('\t', ''))
+
+    # res.append(header)  # 单标题
+    for menu in menus:
+        sub_title = validate_name(menu.get_attribute('title').replace(' ', '').replace('.', '_'))
+        res.append(header + (sub_title if sub_title[0].isdigit() else ('_' + sub_title)))
+
+        sub_icons = menu.find_elements_by_xpath("./div//div[starts-with(@class,'type-icon doc-block')]")
+        if len(sub_icons) == 1:
+            sub_items = menu.find_elements_by_xpath("./div//div[@class='li-text']")
+        elif len(sub_icons) > 1:
+            all_items = menu.find_elements_by_xpath("./div//div[@class='subsection-li-text']")
+            sub_items = [all_items[i] for i in range(len(sub_icons)) if
+                         ('video-block' in sub_icons[i].get_attribute('class'))]
+        else:
+            sub_items = []
+        if not sub_items:
+            res.pop()
+            continue
+
+        try:
+            folder = menu.find_element_by_xpath("./div/ul")
+            # driver.execute_script("arguments[0].scrollIntoView();", folder)
+            driver.execute_script("arguments[0].style = '';", folder)
+        except Exception:
+            pass
+
+        _get_xhr_logs(driver)   # 取一次清除历史记录避免干扰
+        for _item in sub_items:
+            print(sub_title, _item.text)
+            flag_click_ok, counter = False, 3
+            while not flag_click_ok and (counter > 0):
+                try:
+                    counter -= 1
+                    time.sleep(1)
+                    driver.execute_script("arguments[0].click();", _item)
+                    time.sleep(1)
+                    flag_click_ok = True
+                except Exception:
+                    pass
+            if not flag_click_ok:
+                driver.quit()
+                raise RuntimeError('click failed')
+            res.extend(_get_xhr_logs(driver))
+    driver.quit()
+    for i in res:
+        print(i)
