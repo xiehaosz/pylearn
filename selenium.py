@@ -267,6 +267,14 @@ if __name__ == '__main__':
     # driver.execute_script(f"document.getElementById('{attr_id}').remove();")
     # driver.execute_script(f"document.getElementsByClassName('{attr_cls}')[0].remove();")
 
+#     js = """
+#     function getElementByXpath(path) {
+#     return document.evaluate(path, document, null, XpathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;}
+#     element = getElementByXpath(arguments[0]);
+#     element.aria-hidden = arguments[1];
+#     """
+#     driver.execute_script(js, '//div[@id="accessibile-confirm-modal"]', 'false')
+    
     # 页面元素操作.ActionChains方法创建操作队列, 调用perform()执行操作, 方法列表如下-------------------------------
     """
     click(on_element=None)                                          单击鼠标左键
