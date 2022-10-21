@@ -268,14 +268,16 @@ if __name__ == '__main__':
     # driver.execute_script(f"document.getElementsByClassName('{attr_cls}')[0].remove();")
 
 
-#     # 定义js的xpath元素查找
-#     js = """
-#     function getElementByXpath(path) {
-#         var element = document.evaluate(xpath, document).iterateNext();
-#         return element;
-#         }
-#     """
-#     driver.execute_script(js, '//div[@id="accessibile-confirm-modal"]')
+    # 定义js的xpath元素查找. 使用js调用模块XpathResult会出错, 无法从外部引入模块
+    js_xpath = """
+    function getElementByXpath(xpath) {
+        var xpath_res = document.evaluate(xpath, document);
+        return xpath_res.iterateNext()
+    }
+    element = getElementByXpath(arguments[0])
+    element.remove()
+    """
+    driver.execute_script(js_xpath, '//div[@class="videojs_block"]')
 
 #     # 先找到元素再传入js修改
 #     element = driver.find_element_by_xpath('//div[@id="accessibile-confirm-modal"]')
