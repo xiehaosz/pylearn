@@ -104,6 +104,47 @@ def _get_xhr_logs(chrome, keyword='adapt.m3u8'):
     return rtn_url
 
 
+def get_logs(chrome, method='Network.responseReceived'):
+    # chrome.log_types具体类型包括: {'performance': 网络响应, 'browser': 浏览器日志, 'driver': 一般不用}
+    logs = chrome.get_log('performance')
+
+    for item in logs:
+        # 每一条item的结构为字典{'level': 基本, 'message': 消息内容json, 'timestamp': *}
+        log = json.loads(item['message'])['message']
+        # json转换为字典：{'method': 消息属性, 'params': 消息字段}
+        # method值包括 = {'Network.dataReceived',
+        #                'Network.loadingFailed',
+        #                'Network.loadingFinished',
+        #                'Network.requestServedFromCache',
+        #                'Network.requestWillBeSent',
+        #                'Network.requestWillBeSentExtraInfo',
+        #                'Network.resourceChangedPriority',
+        #                'Network.responseReceived',  * 常用
+        #                'Network.responseReceivedExtraInfo',
+        #                'Page.domContentEventFired',
+        #                'Page.frameAttached',
+        #                'Page.frameClearedScheduledNavigation',
+        #                'Page.frameNavigated',
+        #                'Page.frameRequestedNavigation',
+        #                'Page.frameScheduledNavigation',
+        #                'Page.frameStartedLoading',
+        #                'Page.frameStoppedLoading',
+        #                'Page.loadEventFired'}
+
+        if method in log['method'] and 'params' in log.keys():
+            pprint(log)
+            if log['params']['response']['type']:                           # 过滤请求类型
+                url = log['params']['response']['url']                      # 获取值
+                req_id = log['params']['response']['requestId']
+                req_header = log['params']['response']['requestHeaders']
+                rsp_header = log['params']['response']['headers']
+                rsp_time = log['params']['response']['responseTime']
+                status_code = log['params']['response']['status']
+
+                # 运行chrome的开发者工具
+                body = chrome.execute_cdp_cmd('Network.getResponseBody', {'requestId': req_id})
+
+
 def get_logs(chrome, keyword='Network.response'):
     # chrome.log_types可获取log中包含的具体类型: ['performance', 'browser', 'driver']
     # 网络日志的关键字['Network.request', 'Network.response', 'Network.webSocket']
@@ -165,6 +206,25 @@ if __name__ == '__main__':
     # print(driver.get_window_size())
     # print(driver.get_window_rect())
 
+    # COOKIE设置：免去输入账号、密码、验证码过程--------------------------------------------------------------
+    # cookies = driver.get_cookies()                                  # 手动登录后获取新的cookies
+    # # driver.delete_all_cookies()                                   # 清空cookies
+    # # driver.delete_cookie("CookieName")                            # 删除指定cookies
+    #
+    # for _cookie in cookies:
+    #     driver.add_cookie(_cookie)
+    # driver.get('https://w3.huawei.com/')                            # 访问相关页面看是否成功登录
+
+    # # 将cookies转换为request可以使用的格式, driver.get(url, headers=headers, cookies=cookies)
+    # cookies_ = {c['name']: c['value'] for c in cookies}
+    # headers = {
+    #     'authority': 'www.jd.com',
+    #     'method': 'GET',
+    #     'path': '',
+    #     'scheme': 'http',
+    #     ...
+    # }
+    
     # 访问操作-------------------------------------------------------------------------------------------
     # driver.set_page_load_timeout(5)                                     # 设定页面加载限时,超时抛异常
     # driver.set_script_timeout(5)                                         # 设置页面异步js执行超时
@@ -350,16 +410,8 @@ if __name__ == '__main__':
     # 网页转换------------------------------------------------------------------------------------------
     # soup = BeautifulSoup(driver.page_source, 'xml')                 # 转化为beautiful soup格式提取数据
     # html = etree.HTML(driver.page_source)                           # 转化为xml文档使用xpath语法提取数据
-
-    # COOKIE设置：免去输入账号、密码、验证码过程--------------------------------------------------------------
-    # cookies = driver.get_cookies()                                  # 手动登录后获取新的cookies
-    # # driver.delete_all_cookies()                                     # 清空cookies
-    # # driver.delete_cookie("CookieName")                              # 删除指定cookies
-    #
-    # for _cookie in cookies:
-    #     driver.add_cookie(_cookie)
-    # driver.get('https://w3.huawei.com/')                            # 访问相关页面看是否成功登录
     """
+    
     invalid cookie domain:
     selenium的默认域名为data, cookie中带域名，在设置cookie时发现当前域名不包含在cookie中，会抛出设置失败
     在设置cookies前先访问需要登录的地址再添加cookies, 添加成功后再次跳转（或refresh）
