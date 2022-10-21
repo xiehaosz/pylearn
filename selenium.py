@@ -84,27 +84,34 @@ def _set_chrome_options():
     return _options, _cap
 
 
-def _get_xhr_logs(chrome):
-    log_xhr_array = []
-    for type_log in chrome.log_types:
-        for row in chrome.get_log(type_log):    # 动态内容只能get一次,再次get会变化
-            try:
-                log = json.loads(row['message'])['message']
-                if log['method'] == 'Network.responseReceived':
-                    if log['params']['type'] == "XHR":  # 去掉静态js、css等，仅保留xhr请求
-                        log_xhr_array.append(log)
-            except Exception:
-                continue
-    # （可选）过滤特定内容
-    res_url_list = []
-    for xhr in log_xhr_array:
+def _get_xhr_logs(chrome, keyword='adapt.m3u8'):
+    xhr_logs, rtn_url = [], []
+    for item in chrome.get_log('performance'):    # 动态内容只能get一次,再次get会变化
         try:
-            _url = xhr['params']['response']['url']
-            if _url[-10:] == 'adapt.m3u8':
-                res_url_list.append(_url)
-        except Exception:
-            continue
-    return res_url_list  # log_xhr_array
+            log = json.loads(item['message'])['message']
+            if (log['method'] == 'Network.responseReceived') and (log['params']['type'] == "XHR"):
+                xhr_logs.append(log)    # 去除静态js、css等，仅保留xhr请求
+        except KeyError:
+            pass
+
+    for xhr in xhr_logs:
+        try:
+            xhr_url = xhr['params']['response']['url']
+            if keyword in xhr_url:  # 过滤包含keyword的链接
+                rtn_url.append(xhr_url)
+        except KeyError:
+            pass
+    return rtn_url
+
+
+def get_logs(chrome, keyword='Network.response'):
+    # chrome.log_types可获取log中包含的具体类型: ['performance', 'browser', 'driver']
+    # 网络日志的关键字['Network.request', 'Network.response', 'Network.webSocket']
+    logs = chrome.get_log('performance')
+    for item in logs:
+        log = json.loads(item['message'])['message']
+        if keyword in log['method']:
+            pprint(log)
 
 
 def validate_name(_name):
